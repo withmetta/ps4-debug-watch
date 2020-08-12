@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--Project was exported from assembly: C:\Users\x\Downloads\PS4\debugwatch\dbgw\dbgw.exe-->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3E3BCEFE-FC01-4385-BECB-EBFADEE3CB5B}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>dbgw</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
+    <ApplicationVersion>1.0.0.0</ApplicationVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Be.Windows.Forms.HexBox">
+      <HintPath>lib\Be.Windows.Forms.HexBox.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDisasm">
+      <HintPath>lib\SharpDisasm.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="libdebug">
+      <HintPath>lib\libdebug.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="KeystoneNET\Arm64Error.cs" />
+    <Compile Include="KeystoneNET\ArmError.cs" />
+    <Compile Include="KeystoneNET\HexagonError.cs" />
+    <Compile Include="KeystoneNET\KeystoneArchitecture.cs" />
+    <Compile Include="KeystoneNET\KeystoneMode.cs" />
+    <Compile Include="KeystoneNET\KeystoneError.cs" />
+    <Compile Include="KeystoneNET\KeystoneOptionType.cs" />
+    <Compile Include="KeystoneNET\KeystoneOptionValue.cs" />
+    <Compile Include="KeystoneNET\MipsError.cs" />
+    <Compile Include="KeystoneNET\PpcError.cs" />
+    <Compile Include="KeystoneNET\SparcError.cs" />
+    <Compile Include="KeystoneNET\SystemzError.cs" />
+    <Compile Include="KeystoneNET\X86Error.cs" />
+    <Compile Include="KeystoneNET\Keystone.cs" />
+    <Compile Include="KeystoneNET\KeystoneEncoded.cs" />
+    <Compile Include="KeystoneNET\KeystoneImports.cs" />
+    <Compile Include="debugwatch\AssemblerView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="debugwatch\DebugWatchForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="debugwatch\MemoryMapView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="debugwatch\MemoryScanner.cs" />
+    <Compile Include="debugwatch\MemoryViewByteProvider.cs" />
+    <Compile Include="debugwatch\Program.cs" />
+    <Compile Include="debugwatch\RichTextBoxExtensions.cs" />
+    <Compile Include="debugwatch\Settings.cs" />
+    <Compile Include="debugwatch\Properties\Resources.cs" />
+    <Compile Include="debugwatch\Properties\Settings.cs" />
+    <Compile Include="AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="debugwatch\AssemblerView.resx" />
+    <EmbeddedResource Include="debugwatch\DebugWatchForm.resx" />
+    <EmbeddedResource Include="debugwatch\MemoryMapView.resx" />
+    <EmbeddedResource Include="debugwatch\Properties\Resources.resx" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
