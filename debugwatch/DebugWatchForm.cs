@@ -296,7 +296,7 @@ namespace debugwatch
             var tabControlDelegate =
                 // new Action<object, object>((_param1, _param2) => this.TabControl.SelectedIndex = 0);
                 new Action(() => this.TabControl.SelectedIndex = 0);
-            var registersTextBoxDelegate = new Action<object, object>((_param1, _param2) =>
+            var registersTextBoxDelegate = new Action(() =>
                 this.RegistersTextBox.Text = "r15 = 0x" + regs.r_r15.ToString("X") +
                                              ", r14 = 0x" + regs.r_r14.ToString("X") +
                                              ", r13 = 0x" + regs.r_r13.ToString("X") +
@@ -323,9 +323,9 @@ namespace debugwatch
                                              ", rflags = 0x" + regs.r_rflags.ToString("X") +
                                              ", rsp = 0x" + regs.r_rsp.ToString("X") +
                                              ", ss = 0x" + regs.r_ss.ToString("X"));
-            var addressTextBoxDelegate = new Action<object, object>((_param1, _param2) =>
+            var addressTextBoxDelegate = new Action(() =>
                 this.AddressTextBox.Text = "0x" + regs.r_rip.ToString("X"));
-            var tryFindButtonDelegate = new Action<object, object>((_param1, _param2) =>
+            var tryFindButtonDelegate = new Action(() =>
                 this.TryFindButton_Click((object) null, (EventArgs) null));
 
             this.ps4.Notify(222, "interrupt hit\n(thread: " + tdname + " id: " + (object) lwpid + ")");
@@ -339,7 +339,7 @@ namespace debugwatch
             for (int index = 1; index < lines.Length; ++index)
                 stringBuilder.AppendLine(lines[index]);
             string after = stringBuilder.ToString();
-            var disassemblyTextBoxDelegate = new Action<object, object>((_param1, _param2) =>
+            var disassemblyTextBoxDelegate = new Action(() =>
             {
                 this.DisassemblyTextBox.Clear();
                 this.DisassemblyTextBox.AppendText(lines[0] + Environment.NewLine, Color.Salmon);
