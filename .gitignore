@@ -5,3 +5,6 @@
 /obj/Debug
 /bin/Debug
 /dbgw.pdb
+/.vs/dbgw/v16
+/bin/Release
+/obj/Release
