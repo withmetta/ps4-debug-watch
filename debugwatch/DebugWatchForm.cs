@@ -13,7 +13,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace debugwatch
@@ -88,8 +90,10 @@ namespace debugwatch
         private DataGridViewTextBoxColumn ValueColumn;
         private DataGridViewButtonColumn WatchpointColumn;
         private RichTextBox DisassemblyTextBox;
-        private ProgressBar ScanProgressBar;
+        internal ProgressBar ScanProgressBar;
         private Button CreditsButton;
+        internal static DebugWatchForm Singleton;
+        private MemoryScanner.SCAN_TYPE lastScanType = MemoryScanner.SCAN_TYPE.LONG;
 
         private ulong address
         {
@@ -109,6 +113,7 @@ namespace debugwatch
             this.WatchpointLengthComboBox.SelectedIndex = 0;
             this.BreaktypeComboBox.SelectedIndex = 0;
             this.ScanTypeComboBox.SelectedIndex = 0;
+            Singleton = this;
         }
 
         private T[] SubArray<T>(T[] data, int index, int length)
@@ -500,13 +505,128 @@ namespace debugwatch
         {
             this.TabControl.SelectedIndex = 2;
             this.ScanHistoryListBox.Items.Clear();
-            this.ScanHistoryListBox.Items.Add(
-                (object) (this.ValueTextBox.Text + " " + this.ScanTypeComboBox.Text.ToLower()));
+            this.ScanHistoryListBox.Items.Add((object) (this.ValueTextBox.Text + " " + this.ScanTypeComboBox.Text.ToLower()));
             this.ScanDataGridView.Rows.Clear();
             MemoryScanner.SCAN_TYPE type = MemoryScanner.StringToType(this.ScanTypeComboBox.Text);
             string str = MemoryScanner.TypeToString(type);
             byte[] numArray = (byte[]) null;
 
+            if (isSearchValueInvalid(type)) return;
+
+            Task.Factory.StartNew(() => searchMemeoryForValue(type, numArray, str));
+        }
+
+        private void searchMemeoryForValue(MemoryScanner.SCAN_TYPE type, byte[] numArray, string str)
+        {
+            this.disableInterfaceWhileSearching();
+
+            switch (type)
+            {
+                case MemoryScanner.SCAN_TYPE.BYTE:
+                    numArray = new byte[1]
+                    {
+                        Convert.ToByte(this.ValueTextBox.Text)
+                    };
+                    break;
+                case MemoryScanner.SCAN_TYPE.SHORT:
+                    numArray = BitConverter.GetBytes(Convert.ToUInt16(this.ValueTextBox.Text));
+                    break;
+                case MemoryScanner.SCAN_TYPE.INTEGER:
+                    numArray = BitConverter.GetBytes(Convert.ToUInt32(this.ValueTextBox.Text));
+                    break;
+                case MemoryScanner.SCAN_TYPE.LONG:
+                    numArray = BitConverter.GetBytes(Convert.ToUInt64(this.ValueTextBox.Text));
+                    break;
+                case MemoryScanner.SCAN_TYPE.FLOAT:
+                    numArray = BitConverter.GetBytes(Convert.ToSingle(this.ValueTextBox.Text));
+                    break;
+                case MemoryScanner.SCAN_TYPE.DOUBLE:
+                    numArray = BitConverter.GetBytes(Convert.ToDouble(this.ValueTextBox.Text));
+                    break;
+            }
+
+            var memoryEntriesToSearchThrough = this.mapview.GetSelectedEntries();
+            this.ScanProgressBar.Invoke((p) => p.Minimum = 0);
+            this.ScanProgressBar.Invoke((p) => p.Maximum = memoryEntriesToSearchThrough.Length);
+            this.ScanProgressBar.Invoke((p) => p.Value = 0);
+            foreach (MemoryEntry selectedEntry in memoryEntriesToSearchThrough)
+            {
+                byte[] data = this.ps4.ReadMemory(this.attachpid,
+                    selectedEntry.start,
+                    (int) ((long) selectedEntry.end - (long) selectedEntry.start));
+                if (data != null && data.Length != 0)
+                {
+                    // Get the numeral value of the memory segment and returns it as a string.
+                    string ConvertMemorySegmentToValue(byte[] memorySegment, MemoryScanner.SCAN_TYPE scanType)
+                    {
+                        switch (scanType)
+                        {
+                            case MemoryScanner.SCAN_TYPE.BYTE:
+                                return memorySegment[0].ToString();
+                            case MemoryScanner.SCAN_TYPE.SHORT:
+                                return BitConverter.ToInt16(memorySegment, 0).ToString();
+                            case MemoryScanner.SCAN_TYPE.INTEGER:
+                                return BitConverter.ToInt32(memorySegment, 0).ToString();
+                            case MemoryScanner.SCAN_TYPE.LONG:
+                                return BitConverter.ToInt64(memorySegment, 0).ToString();
+                            case MemoryScanner.SCAN_TYPE.FLOAT:
+                                return BitConverter.ToSingle(memorySegment, 0).ToString();
+                            case MemoryScanner.SCAN_TYPE.DOUBLE:
+                                return BitConverter.ToDouble(memorySegment, 0).ToString();
+                            default:
+                                throw new ArgumentOutOfRangeException(nameof(scanType), scanType, null);
+                        }
+                    }
+
+                    foreach (KeyValuePair<ulong, byte[]> keyValuePair in MemoryScanner.ScanMemory(selectedEntry.start, data, type, numArray, new MemoryScanner.CompareFunction(MemoryScanner.CompareEqual)))
+                    {
+                        this.ScanDataGridView.Invoke((gridview )=> gridview.Rows.Add((object) ("0x" + keyValuePair.Key.ToString("X")), (object) str,
+                            ConvertMemorySegmentToValue(keyValuePair.Value, type)));
+                    }
+
+                    GC.Collect();
+                }
+            }
+
+            this.reEnableInterfaceAfterDoneSearching();
+            this.ScanProgressBar.Invoke((p) => p.Value = 0);
+            this.NextScanButton.Invoke((b) => b.Enabled = true);
+        }
+
+        private void disableInterfaceWhileSearching()
+        {
+            // Keep Next Scan button the same
+            var cachedNextScan = NextScanButton;
+
+            var allFields = this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            var buttonFieldInfos = allFields.Where(field => field.FieldType == typeof(Button));
+            foreach (var buttonFieldInfo in buttonFieldInfos)
+            {
+                var btn = (buttonFieldInfo.GetValue(this) as Button);
+                btn.Invoke((b) => { b.Enabled = false; });
+            }
+
+            NextScanButton = cachedNextScan;
+        }
+
+        private void reEnableInterfaceAfterDoneSearching()
+        {
+            // Keep Next Scan button the same
+            var cachedNextScan = NextScanButton.Enabled;
+
+            var allFields = this.GetType().GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            var buttonFieldInfos = allFields.Where(field => field.FieldType == typeof(Button));
+            foreach (var buttonFieldInfo in buttonFieldInfos)
+            {
+                var btn = (buttonFieldInfo.GetValue(this) as Button);
+                btn.Invoke((b) => b.Enabled = true);
+            }
+
+            NextScanButton.Invoke(b => b.Enabled = cachedNextScan);
+        }
+
+        private bool isSearchValueInvalid(MemoryScanner.SCAN_TYPE type)
+        {
             // Validate the text entered before we go any further
             // First, check the integer isn't too small for the type and make note of what type we're searching for
             UInt64 maxValueInt = 0;
@@ -541,89 +661,23 @@ namespace debugwatch
             // Check if we can parse the value
             ulong searchValueAsInt = 0;
             var searchValueAsDouble = 0.0;
-            if ((isIntType && !UInt64.TryParse(this.ValueTextBox.Text, out searchValueAsInt)) || 
+            if ((isIntType && !UInt64.TryParse(this.ValueTextBox.Text, out searchValueAsInt)) ||
                 (!isIntType && double.TryParse(this.ValueTextBox.Text, out searchValueAsDouble)))
             {
                 MessageBox.Show("Value entered could not be parsed.", "Parse Error", MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-                return;
+                return true;
             }
 
             // Check the value isn't too big
-            if (isIntType ?  maxValueInt < searchValueAsInt : maxValueDouble < searchValueAsDouble)
+            if (isIntType ? maxValueInt < searchValueAsInt : maxValueDouble < searchValueAsDouble)
             {
                 MessageBox.Show("Value entered was too large for the specified type.", "Value Too Large", MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-                return;
+                return true;
             }
 
-            switch (type)
-            {
-                case MemoryScanner.SCAN_TYPE.BYTE:
-                    numArray = new byte[1]
-                    {
-                        Convert.ToByte(this.ValueTextBox.Text)
-                    };
-                    break;
-                case MemoryScanner.SCAN_TYPE.SHORT:
-                    numArray = BitConverter.GetBytes(Convert.ToUInt16(this.ValueTextBox.Text));
-                    break;
-                case MemoryScanner.SCAN_TYPE.INTEGER:
-                    numArray = BitConverter.GetBytes(Convert.ToUInt32(this.ValueTextBox.Text));
-                    break;
-                case MemoryScanner.SCAN_TYPE.LONG:
-                    numArray = BitConverter.GetBytes(Convert.ToUInt64(this.ValueTextBox.Text));
-                    break;
-                case MemoryScanner.SCAN_TYPE.FLOAT:
-                    numArray = BitConverter.GetBytes(Convert.ToSingle(this.ValueTextBox.Text));
-                    break;
-                case MemoryScanner.SCAN_TYPE.DOUBLE:
-                    numArray = BitConverter.GetBytes(Convert.ToDouble(this.ValueTextBox.Text));
-                    break;
-            }
-
-            foreach (MemoryEntry selectedEntry in this.mapview.GetSelectedEntries())
-            {
-                byte[] data = this.ps4.ReadMemory(this.attachpid, selectedEntry.start,
-                    (int) ((long) selectedEntry.end - (long) selectedEntry.start));
-                if (data != null && data.Length != 0)
-                {
-                    // Get the numeral value of the memory segment and returns it as a string.
-                    Func<byte[], MemoryScanner.SCAN_TYPE, string> convertMemorySegmentToValue =
-                        (memorySegment, scanType) =>
-                        {
-                            switch (scanType)
-                            {
-                                case MemoryScanner.SCAN_TYPE.BYTE:
-                                    return memorySegment[0].ToString();
-                                case MemoryScanner.SCAN_TYPE.SHORT:
-                                    return BitConverter.ToInt16(memorySegment, 0).ToString();
-                                case MemoryScanner.SCAN_TYPE.INTEGER:
-                                    return BitConverter.ToInt32(memorySegment, 0).ToString();
-                                case MemoryScanner.SCAN_TYPE.LONG:
-                                    return BitConverter.ToInt64(memorySegment, 0).ToString();
-                                case MemoryScanner.SCAN_TYPE.FLOAT:
-                                    return BitConverter.ToSingle(memorySegment, 0).ToString();
-                                case MemoryScanner.SCAN_TYPE.DOUBLE:
-                                    return BitConverter.ToDouble(memorySegment, 0).ToString();
-                                default:
-                                    throw new ArgumentOutOfRangeException(nameof(scanType), scanType, null);
-                            }
-                        };
-
-                    foreach (KeyValuePair<ulong, byte[]> keyValuePair in MemoryScanner.ScanMemory(selectedEntry.start,
-                        data,
-                        type, numArray, new MemoryScanner.CompareFunction(MemoryScanner.CompareEqual)))
-                    {
-                        this.ScanDataGridView.Rows.Add((object) ("0x" + keyValuePair.Key.ToString("X")), (object) str,
-                            convertMemorySegmentToValue(keyValuePair.Value, type));
-                    }
-
-                    GC.Collect();
-                }
-            }
-
-            this.NextScanButton.Enabled = true;
+            return false;
         }
 
         private void NextScanButton_Click(object sender, EventArgs e)
@@ -631,11 +685,20 @@ namespace debugwatch
             this.TabControl.SelectedIndex = 2;
             this.ScanHistoryListBox.Items.Add(
                 (object) (this.ValueTextBox.Text + " " + this.ScanTypeComboBox.Text.ToLower()));
+            disableInterfaceWhileSearching();
+            var updateValuesTask = Task.Factory.StartNew(() => recheckSavedValues());
+        }
+
+        private void recheckSavedValues()
+        {
             List<string[]> strArrayList = new List<string[]>();
+            this.ScanProgressBar.Invoke(s => s.Maximum = this.ScanDataGridView.Rows.Count);
+            this.ScanProgressBar.Invoke(s => s.Value = 0);
+
             foreach (DataGridViewRow row in (IEnumerable) this.ScanDataGridView.Rows)
             {
                 ulong uint64 = Convert.ToUInt64(row.Cells[0].Value.ToString().Replace("0x", ""), 16);
-                MemoryScanner.SCAN_TYPE type = MemoryScanner.StringToType(row.Cells[1].ToString());
+                MemoryScanner.SCAN_TYPE type = MemoryScanner.StringToType(row.Cells[1].Value.ToString());
                 bool flag = false;
                 switch (type)
                 {
@@ -693,6 +756,7 @@ namespace debugwatch
                         }
 
                         break;
+                        
                 }
 
                 if (flag)
@@ -705,11 +769,17 @@ namespace debugwatch
                     };
                     strArrayList.Add(strArray);
                 }
+
+                this.ScanProgressBar.Invoke(s => s.Increment(1));
             }
 
-            this.ScanDataGridView.Rows.Clear();
+            this.ScanDataGridView.Invoke(s => s.Rows.Clear());
             foreach (string[] strArray in strArrayList)
-                this.ScanDataGridView.Rows.Add((object) strArray[0], (object) strArray[1], (object) strArray[2]);
+            {
+                this.ScanDataGridView.Invoke(s => s.Rows.Add((object)strArray[0], (object)strArray[1], (object)strArray[2]));
+            }
+            this.ScanProgressBar.Invoke(s => s.Value = 0);
+            reEnableInterfaceAfterDoneSearching();
         }
 
         private void FilterProcessListCheckBox_CheckedChanged(object sender, EventArgs e)

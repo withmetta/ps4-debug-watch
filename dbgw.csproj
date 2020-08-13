@@ -47,6 +47,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="debugwatch\Extensions.cs" />
     <Compile Include="KeystoneNET\Arm64Error.cs" />
     <Compile Include="KeystoneNET\ArmError.cs" />
     <Compile Include="KeystoneNET\HexagonError.cs" />
@@ -86,6 +87,9 @@
     <EmbeddedResource Include="debugwatch\DebugWatchForm.resx" />
     <EmbeddedResource Include="debugwatch\MemoryMapView.resx" />
     <EmbeddedResource Include="debugwatch\Properties\Resources.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="_scratch\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
