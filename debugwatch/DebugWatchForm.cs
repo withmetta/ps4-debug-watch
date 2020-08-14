@@ -125,7 +125,7 @@ namespace debugwatch
 
         private void DebugWatchForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (this.ps4.IsConnected)
+            if (this.ps4 != null && this.ps4.IsConnected)
             {
                 if (this.ps4.IsDebugging)
                     this.ps4.DetachDebugger();
