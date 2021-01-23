@@ -662,7 +662,7 @@ namespace debugwatch
             ulong searchValueAsInt = 0;
             var searchValueAsDouble = 0.0;
             if ((isIntType && !UInt64.TryParse(this.ValueTextBox.Text, out searchValueAsInt)) ||
-                (!isIntType && double.TryParse(this.ValueTextBox.Text, out searchValueAsDouble)))
+                (!isIntType && !double.TryParse(this.ValueTextBox.Text, out searchValueAsDouble)))
             {
                 MessageBox.Show("Value entered could not be parsed.", "Parse Error", MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
